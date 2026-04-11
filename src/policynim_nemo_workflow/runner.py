@@ -9,8 +9,10 @@ from policynim_nemo_workflow.evaluator import evaluate_artifact
 from policynim_nemo_workflow.generator import generate_baseline_artifact, generate_policy_artifact
 from policynim_nemo_workflow.mcp_client import PolicyClient
 from policynim_nemo_workflow.models import (
+    CodingArtifact,
     CodingTask,
     CompareResult,
+    EvaluationResult,
     RunBundle,
     ToolCallRecord,
 )
@@ -85,7 +87,12 @@ async def compare_runs(
     )
 
 
-def _bundle(artifact, evaluation, *, output_base: Path | None) -> RunBundle:  # noqa: ANN001
+def _bundle(
+    artifact: CodingArtifact,
+    evaluation: EvaluationResult,
+    *,
+    output_base: Path | None,
+) -> RunBundle:
     output_dir: Path | None = None
     if output_base is not None:
         output_dir = create_run_dir(output_base, task_id=artifact.task_id, mode=artifact.mode)

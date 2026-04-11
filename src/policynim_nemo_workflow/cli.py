@@ -4,18 +4,26 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Awaitable
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated, TypeVar
 
 import typer
 
 from policynim_nemo_workflow.mcp_client import HostedPolicyMcpClient
+from policynim_nemo_workflow.models import RunBundle
 from policynim_nemo_workflow.runner import compare_runs, run_baseline, run_policy
 from policynim_nemo_workflow.settings import DemoSettings
 from policynim_nemo_workflow.tasks import load_task
 
 app = typer.Typer(help="Hosted PolicyNIM + NVIDIA NeMo coding workflow demo.")
 T = TypeVar("T")
+
+
+class WorkflowMode(StrEnum):
+    baseline = "baseline"
+    policy = "policy"
+    compare = "compare"
 
 
 @app.command("inspect-mcp")
@@ -35,7 +43,10 @@ def inspect_mcp() -> None:
 
 @app.command("run")
 def run(
-    mode: Annotated[str, typer.Option(help="One of: baseline, policy, compare.")] = "compare",
+    mode: Annotated[
+        WorkflowMode,
+        typer.Option(help="Workflow mode to run."),
+    ] = WorkflowMode.compare,
     task: Annotated[
         Path,
         typer.Option(help="Path to the demo task JSON."),
@@ -53,7 +64,7 @@ def run(
     coding_task = load_task(task)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    if mode == "baseline":
+    if mode is WorkflowMode.baseline:
         bundle = _run_async(
             run_baseline(coding_task, output_base=output_dir),
             operation="Baseline workflow",
@@ -67,7 +78,7 @@ def run(
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
-    if mode == "policy":
+    if mode is WorkflowMode.policy:
         bundle = _run_async(
             run_policy(
                 coding_task,
@@ -80,7 +91,7 @@ def run(
         _print_bundle(bundle)
         return
 
-    if mode == "compare":
+    if mode is WorkflowMode.compare:
         result = _run_async(
             compare_runs(
                 coding_task,
@@ -98,10 +109,8 @@ def run(
         typer.echo(f"policy_artifacts={result.policy.output_dir}")
         raise typer.Exit(0 if result.improved else 1)
 
-    raise typer.BadParameter("mode must be one of: baseline, policy, compare")
 
-
-def _print_bundle(bundle) -> None:  # noqa: ANN001
+def _print_bundle(bundle: RunBundle) -> None:
     typer.echo(f"mode={bundle.artifact.mode} score={bundle.evaluation.score:.2f}")
     if bundle.output_dir is not None:
         typer.echo(f"artifacts={bundle.output_dir}")

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from collections.abc import AsyncIterator, Sequence
 from contextlib import asynccontextmanager
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 import httpx
 from pydantic import ValidationError
 
 from policynim_nemo_workflow.models import PolicyPreflightResult
 from policynim_nemo_workflow.settings import DemoSettings
+
+if TYPE_CHECKING:
+    from mcp import ClientSession
 
 
 class PolicyClient(Protocol):
@@ -71,7 +74,7 @@ class HostedPolicyMcpClient:
                 ) from exc
 
     @asynccontextmanager
-    async def _session(self) -> AsyncIterator[object]:
+    async def _session(self) -> AsyncIterator[ClientSession]:
         """Open and close one authenticated MCP session."""
         from mcp import ClientSession
         from mcp.client.streamable_http import streamable_http_client

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
+
 from nat.builder.builder import Builder
 from nat.builder.function_info import FunctionInfo
 from nat.cli.register_workflow import register_function
@@ -40,7 +42,10 @@ class ReviseFailedArtifactConfig(FunctionBaseConfig, name="revise_failed_artifac
 
 
 @register_function(config_type=ClassifyCodingTaskConfig)
-async def register_classify_coding_task(config: ClassifyCodingTaskConfig, builder: Builder):  # noqa: ARG001
+async def register_classify_coding_task(
+    config: ClassifyCodingTaskConfig,  # noqa: ARG001
+    builder: Builder,  # noqa: ARG001
+) -> AsyncIterator[FunctionInfo]:
     """Register the task classifier tool."""
 
     async def _classify(message: TaskTextInput) -> DemoTextOutput:
@@ -56,7 +61,7 @@ async def register_classify_coding_task(config: ClassifyCodingTaskConfig, builde
 async def register_compile_policy_constraints(
     config: CompilePolicyConstraintsConfig,  # noqa: ARG001
     builder: Builder,  # noqa: ARG001
-):
+) -> AsyncIterator[FunctionInfo]:
     """Register the policy constraint compiler tool."""
 
     async def _compile(message: TaskTextInput) -> DemoTextOutput:
@@ -74,7 +79,10 @@ async def register_compile_policy_constraints(
 
 
 @register_function(config_type=EmitCodingArtifactConfig)
-async def register_emit_coding_artifact(config: EmitCodingArtifactConfig, builder: Builder):  # noqa: ARG001
+async def register_emit_coding_artifact(
+    config: EmitCodingArtifactConfig,  # noqa: ARG001
+    builder: Builder,  # noqa: ARG001
+) -> AsyncIterator[FunctionInfo]:
     """Register the artifact emitter tool."""
 
     async def _emit(message: TaskTextInput) -> DemoTextOutput:
@@ -90,7 +98,7 @@ async def register_emit_coding_artifact(config: EmitCodingArtifactConfig, builde
 async def register_revise_failed_artifact(
     config: ReviseFailedArtifactConfig,  # noqa: ARG001
     builder: Builder,  # noqa: ARG001
-):
+) -> AsyncIterator[FunctionInfo]:
     """Register the revision tool."""
 
     async def _revise(message: TaskTextInput) -> DemoTextOutput:
