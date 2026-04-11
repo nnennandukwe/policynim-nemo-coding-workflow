@@ -37,7 +37,13 @@ def write_json_atomic(path: Path, payload: BaseModel | dict[str, object]) -> Non
     else:
         data = payload
     content = json.dumps(data, indent=2, sort_keys=True) + "\n"
-    with NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as tmp:
-        tmp.write(content)
-        tmp_path = Path(tmp.name)
-    tmp_path.replace(path)
+    tmp_path: Path | None = None
+    try:
+        with NamedTemporaryFile("w", encoding="utf-8", dir=path.parent, delete=False) as tmp:
+            tmp_path = Path(tmp.name)
+            tmp.write(content)
+        tmp_path.replace(path)
+    except Exception:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
+        raise

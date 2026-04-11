@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import Protocol
 
 import httpx
+from pydantic import ValidationError
 
 from policynim_nemo_workflow.models import PolicyPreflightResult
 from policynim_nemo_workflow.settings import DemoSettings
@@ -57,8 +58,17 @@ class HostedPolicyMcpClient:
             result = await session.call_tool("policy_preflight", arguments)
             payload = result.structuredContent
             if not isinstance(payload, dict):
-                raise RuntimeError("policy_preflight did not return structured content.")
-            return PolicyPreflightResult.model_validate(payload)
+                payload_type = type(payload).__name__
+                raise RuntimeError(
+                    "policy_preflight did not return structured content "
+                    f"(received {payload_type})."
+                )
+            try:
+                return PolicyPreflightResult.model_validate(payload)
+            except ValidationError as exc:
+                raise RuntimeError(
+                    "policy_preflight returned invalid structured content."
+                ) from exc
 
     @asynccontextmanager
     async def _session(self) -> AsyncIterator[object]:

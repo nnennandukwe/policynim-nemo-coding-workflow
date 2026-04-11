@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from pydantic import ValidationError
+
 from policynim_nemo_workflow.models import CodingTask
 
 
@@ -16,4 +18,7 @@ def load_task(path: Path) -> CodingTask:
         raise RuntimeError(f"Task file does not exist: {path}") from exc
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"Task file is not valid JSON: {path}") from exc
-    return CodingTask.model_validate(payload)
+    try:
+        return CodingTask.model_validate(payload)
+    except ValidationError as exc:
+        raise RuntimeError(f"Task file has invalid schema: {path}") from exc

@@ -56,3 +56,21 @@ def test_write_json_atomic_writes_valid_json(tmp_path: Path) -> None:
 
     assert json.loads(path.read_text(encoding="utf-8"))["score"] == 1.0
     assert not list(tmp_path.glob("nested/tmp*"))
+
+
+def test_write_json_atomic_cleans_temp_file_when_replace_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    path = tmp_path / "nested" / "evaluation.json"
+
+    def fail_replace(self: Path, target: Path) -> Path:
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(Path, "replace", fail_replace)
+
+    with pytest.raises(OSError, match="replace failed"):
+        write_json_atomic(path, {"score": 1.0})
+
+    assert not path.exists()
+    assert not any(path.parent.iterdir())

@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Awaitable
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, TypeVar
 
 import typer
 
@@ -14,6 +15,7 @@ from policynim_nemo_workflow.settings import DemoSettings
 from policynim_nemo_workflow.tasks import load_task
 
 app = typer.Typer(help="Hosted PolicyNIM + NVIDIA NeMo coding workflow demo.")
+T = TypeVar("T")
 
 
 @app.command("inspect-mcp")
@@ -25,7 +27,7 @@ def inspect_mcp() -> None:
     except RuntimeError as exc:
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
-    tools = asyncio.run(client.list_tools())
+    tools = _run_async(client.list_tools(), operation="Hosted MCP inspection")
     typer.echo("Hosted PolicyNIM MCP tools:")
     for tool in tools:
         typer.echo(f"- {tool}")
@@ -52,7 +54,10 @@ def run(
     output_dir.mkdir(parents=True, exist_ok=True)
 
     if mode == "baseline":
-        bundle = asyncio.run(run_baseline(coding_task, output_base=output_dir))
+        bundle = _run_async(
+            run_baseline(coding_task, output_base=output_dir),
+            operation="Baseline workflow",
+        )
         _print_bundle(bundle)
         return
 
@@ -63,25 +68,27 @@ def run(
         typer.echo(str(exc), err=True)
         raise typer.Exit(1) from exc
     if mode == "policy":
-        bundle = asyncio.run(
+        bundle = _run_async(
             run_policy(
                 coding_task,
                 client=client,
                 output_base=output_dir,
                 revise_on_fail=revise_on_fail,
-            )
+            ),
+            operation="Policy workflow",
         )
         _print_bundle(bundle)
         return
 
     if mode == "compare":
-        result = asyncio.run(
+        result = _run_async(
             compare_runs(
                 coding_task,
                 client=client,
                 output_base=output_dir,
                 revise_on_fail=revise_on_fail,
-            )
+            ),
+            operation="Comparison workflow",
         )
         typer.echo(
             f"baseline={result.baseline.evaluation.score:.2f} "
@@ -98,3 +105,11 @@ def _print_bundle(bundle) -> None:  # noqa: ANN001
     typer.echo(f"mode={bundle.artifact.mode} score={bundle.evaluation.score:.2f}")
     if bundle.output_dir is not None:
         typer.echo(f"artifacts={bundle.output_dir}")
+
+
+def _run_async(coro: Awaitable[T], *, operation: str) -> T:
+    try:
+        return asyncio.run(coro)
+    except Exception as exc:
+        typer.echo(f"{operation} failed: {exc}", err=True)
+        raise typer.Exit(1) from exc
