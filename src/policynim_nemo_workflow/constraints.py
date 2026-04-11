@@ -17,9 +17,9 @@ def classify_coding_task(prompt: str) -> str:
     return "backend"
 
 
-def compile_policy_constraints(result: PolicyPreflightResult) -> PolicyConstraints:
+def compile_policy_constraints(preflight_result: PolicyPreflightResult) -> PolicyConstraints:
     """Turn PolicyNIM preflight output into compact generation constraints."""
-    if result.insufficient_context:
+    if preflight_result.insufficient_context:
         return PolicyConstraints(
             summary="PolicyNIM reported insufficient context; generation must stop.",
             insufficient_context=True,
@@ -27,25 +27,37 @@ def compile_policy_constraints(result: PolicyPreflightResult) -> PolicyConstrain
         )
 
     constraints: list[PolicyConstraint] = []
-    for item in result.implementation_guidance:
+    for item in preflight_result.implementation_guidance:
         constraints.append(
-            PolicyConstraint(kind="must", text=item, citation_ids=_all_citation_ids(result))
+            PolicyConstraint(
+                kind="must",
+                text=item,
+                citation_ids=_all_citation_ids(preflight_result),
+            )
         )
-    for item in result.review_flags:
+    for item in preflight_result.review_flags:
         constraints.append(
-            PolicyConstraint(kind="avoid", text=item, citation_ids=_all_citation_ids(result))
+            PolicyConstraint(
+                kind="avoid",
+                text=item,
+                citation_ids=_all_citation_ids(preflight_result),
+            )
         )
-    for item in result.tests_required:
+    for item in preflight_result.tests_required:
         constraints.append(
-            PolicyConstraint(kind="test", text=item, citation_ids=_all_citation_ids(result))
+            PolicyConstraint(
+                kind="test",
+                text=item,
+                citation_ids=_all_citation_ids(preflight_result),
+            )
         )
 
     if not constraints:
         constraints.append(
             PolicyConstraint(
                 kind="must",
-                text=result.summary,
-                citation_ids=_all_citation_ids(result),
+                text=preflight_result.summary,
+                citation_ids=_all_citation_ids(preflight_result),
             )
         )
 
@@ -55,12 +67,12 @@ def compile_policy_constraints(result: PolicyPreflightResult) -> PolicyConstrain
         lines.append(f"- {constraint.kind.upper()}: {constraint.text} [{citations}]")
 
     return PolicyConstraints(
-        summary=result.summary,
+        summary=preflight_result.summary,
         constraints=constraints,
-        citations=result.citations,
+        citations=preflight_result.citations,
         prompt_block="\n".join(lines),
     )
 
 
-def _all_citation_ids(result: PolicyPreflightResult) -> list[str]:
-    return [citation.chunk_id for citation in result.citations]
+def _all_citation_ids(preflight_result: PolicyPreflightResult) -> list[str]:
+    return [citation.chunk_id for citation in preflight_result.citations]
