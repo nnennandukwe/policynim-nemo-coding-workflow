@@ -1,0 +1,22 @@
+name: Live Smoke
+
+on:
+  workflow_dispatch:
+
+jobs:
+  hosted-policy-nim:
+    name: Hosted PolicyNIM MCP and NVIDIA NIM smoke
+    runs-on: ubuntu-24.04
+    env:
+      POLICYNIM_BETA_MCP_URL: ${{ secrets.POLICYNIM_BETA_MCP_URL }}
+      POLICYNIM_BETA_MCP_TOKEN: ${{ secrets.POLICYNIM_BETA_MCP_TOKEN }}
+      NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v5
+      - run: uv sync --group dev
+      - run: uv run pytest -q -m live
+      - run: uv run workflow-demo inspect-mcp

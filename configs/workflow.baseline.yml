@@ -1,0 +1,26 @@
+# NeMo Agent Toolkit baseline workflow: no PolicyNIM tools in context.
+general:
+  telemetry:
+    logging:
+      console:
+        _type: console
+        level: INFO
+
+llms:
+  nim_llm:
+    _type: nim
+    model_name: ${NIM_MODEL:-meta/llama-3.1-70b-instruct}
+    temperature: 0
+    top_p: 1
+
+functions:
+  emit_coding_artifact:
+    _type: emit_coding_artifact
+
+workflow:
+  _type: tool_calling_agent
+  llm_name: nim_llm
+  tool_names:
+    - emit_coding_artifact
+  max_iterations: 4
+  verbose: true

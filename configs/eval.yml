@@ -1,0 +1,13 @@
+# NeMo Agent Toolkit evaluation entrypoint for the single golden scenario.
+base: workflow.policy.yml
+
+eval:
+  general:
+    output_dir: artifacts/eval
+    dataset:
+      _type: jsonl
+      file_path: evals/refresh_token_dataset.jsonl
+  evaluators:
+    trajectory:
+      _type: trajectory
+      llm_name: nim_llm

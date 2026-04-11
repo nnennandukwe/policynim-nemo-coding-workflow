@@ -1,0 +1,54 @@
+# NeMo Agent Toolkit policy-conditioned workflow with hosted PolicyNIM MCP tools.
+general:
+  telemetry:
+    logging:
+      console:
+        _type: console
+        level: INFO
+
+authentication:
+  policynim_bearer:
+    _type: api_key
+    raw_key: "${POLICYNIM_BETA_MCP_TOKEN}"
+    auth_scheme: Bearer
+
+llms:
+  nim_llm:
+    _type: nim
+    model_name: ${NIM_MODEL:-meta/llama-3.1-70b-instruct}
+    temperature: 0
+    top_p: 1
+
+function_groups:
+  policynim_mcp:
+    _type: mcp_client
+    server:
+      transport: streamable-http
+      url: "${POLICYNIM_BETA_MCP_URL}"
+      auth_provider: policynim_bearer
+    include:
+      - policy_preflight
+      - policy_search
+
+functions:
+  classify_coding_task:
+    _type: classify_coding_task
+  compile_policy_constraints:
+    _type: compile_policy_constraints
+  emit_coding_artifact:
+    _type: emit_coding_artifact
+  revise_failed_artifact:
+    _type: revise_failed_artifact
+
+workflow:
+  _type: tool_calling_agent
+  llm_name: nim_llm
+  tool_names:
+    - classify_coding_task
+    - policy_preflight
+    - policy_search
+    - compile_policy_constraints
+    - emit_coding_artifact
+    - revise_failed_artifact
+  max_iterations: 8
+  verbose: true

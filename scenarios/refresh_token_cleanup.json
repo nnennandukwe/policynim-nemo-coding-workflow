@@ -1,0 +1,7 @@
+{
+  "task_id": "refresh-token-cleanup",
+  "title": "Refresh-token cleanup background job",
+  "prompt": "Implement a refresh-token cleanup background job that deletes expired refresh tokens without breaking active sessions, preserves auditability, and adds tests.",
+  "domain": "security",
+  "top_k": 5
+}
