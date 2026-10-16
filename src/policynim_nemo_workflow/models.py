@@ -51,10 +51,12 @@ class PolicyGuidance(StrictModel):
 class PolicyPreflightResult(StrictModel):
     """Subset of PolicyNIM PreflightResult used by this demo."""
 
+    generation_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
     task: str = Field(min_length=1)
     domain: str | None = None
     summary: str = Field(min_length=1)
     applicable_policies: list[PolicyGuidance] = Field(default_factory=list)
+    plan_steps: list[str] = Field(default_factory=list)
     implementation_guidance: list[str] = Field(default_factory=list)
     review_flags: list[str] = Field(default_factory=list)
     tests_required: list[str] = Field(default_factory=list)
@@ -74,6 +76,7 @@ class PolicyConstraints(StrictModel):
     """Compiled constraints that materially shape generation."""
 
     summary: str = Field(min_length=1)
+    plan_steps: list[str] = Field(default_factory=list)
     constraints: list[PolicyConstraint] = Field(default_factory=list)
     citations: list[PolicyCitation] = Field(default_factory=list)
     prompt_block: str = Field(min_length=1)
@@ -102,6 +105,7 @@ class CodingArtifact(StrictModel):
     mode: RunMode
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     plan: list[str] = Field(default_factory=list)
+    unverified_plan_steps: list[str] = Field(default_factory=list)
     files: list[GeneratedFile] = Field(default_factory=list)
     tests: list[GeneratedFile] = Field(default_factory=list)
     policy_trace: list[ToolCallRecord] = Field(default_factory=list)

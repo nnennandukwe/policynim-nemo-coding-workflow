@@ -26,8 +26,9 @@ def compile_policy_constraints(preflight_result: PolicyPreflightResult) -> Polic
             prompt_block="PolicyNIM returned insufficient_context=true. Do not generate code.",
         )
 
+    plan_steps = [step for step in preflight_result.plan_steps if step.strip()]
     constraints: list[PolicyConstraint] = []
-    for item in preflight_result.implementation_guidance:
+    for item in [*plan_steps, *preflight_result.implementation_guidance]:
         constraints.append(
             PolicyConstraint(
                 kind="must",
@@ -68,6 +69,7 @@ def compile_policy_constraints(preflight_result: PolicyPreflightResult) -> Polic
 
     return PolicyConstraints(
         summary=preflight_result.summary,
+        plan_steps=plan_steps,
         constraints=constraints,
         citations=preflight_result.citations,
         prompt_block="\n".join(lines),
