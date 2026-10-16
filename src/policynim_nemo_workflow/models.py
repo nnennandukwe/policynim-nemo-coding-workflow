@@ -105,6 +105,7 @@ class CodingArtifact(StrictModel):
     mode: RunMode
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     plan: list[str] = Field(default_factory=list)
+    unverified_plan_steps: list[str] = Field(default_factory=list)
     files: list[GeneratedFile] = Field(default_factory=list)
     tests: list[GeneratedFile] = Field(default_factory=list)
     policy_trace: list[ToolCallRecord] = Field(default_factory=list)

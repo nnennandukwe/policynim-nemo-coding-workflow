@@ -80,3 +80,16 @@ uv run pytest -q -m live
 - [NeMo Agent Toolkit evaluation](https://docs.nvidia.com/nemo/agent-toolkit/latest/improve-workflows/evaluate.html)
 - [NVIDIA NIM function calling](https://docs.nvidia.com/nim/large-language-models/1.10.0/function-calling.html)
 - [AI-Q Blueprint MCP tools](https://docs.nvidia.com/aiq-blueprint/latest/customization/mcp-tools.html)
+
+## Preflight Plans And Verification
+
+The MCP client accepts optional generation IDs and plan steps from PolicyNIM,
+including older responses without those fields. Required plan steps enter the
+compiled guidance and the saved artifact's plan. Blank entries are ignored.
+
+The fixed demo generator can't establish that arbitrary requested steps are
+implemented in its code. It records them in `unverified_plan_steps`, and the
+`required_plan_steps_verified` evaluation check fails while that list isn't empty.
+A repeated template generation keeps that failed check; copying guidance into a
+plan doesn't verify implementation. The existing token-cleanup checks remain
+separate evidence with their original limited scope.

@@ -184,3 +184,36 @@ async def test_blank_preflight_steps_dont_stop_the_policy_workflow(
     assert all(step.strip() for step in bundle.artifact.plan)
     assert bundle.output_dir is not None
     assert (bundle.output_dir / "artifact.json").is_file()
+
+
+@pytest.mark.asyncio
+async def test_requested_plan_isnt_reported_as_verified_code(
+    producer_preflight_payload: dict[str, object], tmp_path: Path
+) -> None:
+    """Keep requested steps unverified through generation, retry and saved evaluation."""
+    import json
+
+    from policynim_nemo_workflow.models import CodingTask, PolicyPreflightResult
+    from policynim_nemo_workflow.runner import run_policy
+
+    task = CodingTask(task_id="cleanup", title="Cleanup", prompt="Implement token cleanup.")
+    preflight = PolicyPreflightResult.model_validate(producer_preflight_payload)
+    bundle = await run_policy(
+        task,
+        client=_client_with_payload(producer_preflight_payload),
+        output_base=tmp_path,
+        revise_on_fail=True,
+    )
+    assert bundle.evaluation.passed is False
+    assert bundle.artifact.revision_count == 1
+    assert bundle.artifact.unverified_plan_steps == preflight.plan_steps
+    failed = [check for check in bundle.evaluation.checks if not check.passed]
+    assert any(check.name == "required_plan_steps_verified" for check in failed)
+    assert bundle.output_dir is not None
+    artifact = json.loads((bundle.output_dir / "artifact.json").read_text())
+    evaluation = json.loads((bundle.output_dir / "evaluation.json").read_text())
+    assert artifact["unverified_plan_steps"] == preflight.plan_steps
+    assert any(
+        check["name"] == "required_plan_steps_verified" and not check["passed"]
+        for check in evaluation["checks"]
+    )

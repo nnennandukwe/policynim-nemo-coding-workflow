@@ -44,6 +44,15 @@ def evaluate_artifact(artifact: CodingArtifact) -> EvaluationResult:
             message="Generated code must use the repository boundary instead of direct SQL.",
         ),
     ]
+    if artifact.unverified_plan_steps:
+        checks.append(
+            EvaluationCheck(
+                name="required_plan_steps_verified",
+                passed=False,
+                message="Requested PolicyNIM plan steps haven't been independently verified "
+                "by the fixed demo generator.",
+            )
+        )
     passed_count = sum(1 for check in checks if check.passed)
     return EvaluationResult(
         task_id=artifact.task_id,
