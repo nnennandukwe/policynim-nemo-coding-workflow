@@ -61,3 +61,67 @@ async def test_policy_preflight_wraps_invalid_structured_content() -> None:
         )
 
     assert exc_info.value.__cause__ is not None
+
+
+@pytest.fixture
+def producer_preflight_payload() -> dict[str, object]:
+    """Load JSON serialized by PolicyNIM PreflightResult at producer revision 10d4e86."""
+    import json
+    from pathlib import Path
+
+    path = Path(__file__).parent / "fixtures" / "policynim_preflight_generation.json"
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+@pytest.mark.asyncio
+async def test_policy_preflight_accepts_generation_and_plan_steps(
+    producer_preflight_payload: dict[str, object],
+) -> None:
+    """The real client preserves the complete producer payload, including nested citations."""
+    client = _client_with_payload(producer_preflight_payload)
+    result = await client.policy_preflight(
+        task="Implement refresh-token cleanup.", domain="security", top_k=3
+    )
+    assert result.model_dump(mode="json") == producer_preflight_payload
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("generation", [None, "omitted"])
+async def test_policy_preflight_accepts_older_payloads(
+    producer_preflight_payload: dict[str, object], generation: str | None
+) -> None:
+    """Legacy and source-only responses keep working without a generation or plan."""
+    producer_preflight_payload.pop("plan_steps")
+    if generation == "omitted":
+        producer_preflight_payload.pop("generation_id")
+    else:
+        producer_preflight_payload["generation_id"] = generation
+    result = await _client_with_payload(producer_preflight_payload).policy_preflight(
+        task="Implement refresh-token cleanup.", domain="security", top_k=3
+    )
+    assert result.generation_id is None
+    assert result.plan_steps == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "changes",
+    [
+        {"unexpected_field": True},
+        {"generation_id": "not-a-generation"},
+        {"generation_id": "A" * 64},
+        {"generation_id": "a" * 63},
+        {"plan_steps": "check expiry"},
+        {"plan_steps": [123]},
+    ],
+)
+async def test_policy_preflight_still_rejects_invalid_payloads(
+    producer_preflight_payload: dict[str, object], changes: dict[str, object]
+) -> None:
+    """Known optional fields don't weaken unknown-field, ID or plan-item validation."""
+    producer_preflight_payload.update(changes)
+    with pytest.raises(RuntimeError, match="invalid structured content") as error:
+        await _client_with_payload(producer_preflight_payload).policy_preflight(
+            task="Implement refresh-token cleanup.", domain="security", top_k=3
+        )
+    assert error.value.__cause__ is not None
