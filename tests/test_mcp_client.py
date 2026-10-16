@@ -163,3 +163,24 @@ async def test_preflight_plan_steps_survive_the_saved_workflow_artifact(
     assert bundle.output_dir is not None
     saved = json.loads((bundle.output_dir / "artifact.json").read_text())
     assert saved["plan"] == bundle.artifact.plan
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("steps", [[""], ["  ", "Check revocation before deleting.", ""]])
+async def test_blank_preflight_steps_dont_stop_the_policy_workflow(
+    producer_preflight_payload: dict[str, object], steps: list[str], tmp_path: Path
+) -> None:
+    """Producer-valid blank entries can't abort compilation or leak into the saved plan."""
+    from policynim_nemo_workflow.models import CodingTask
+    from policynim_nemo_workflow.runner import run_policy
+
+    producer_preflight_payload["plan_steps"] = steps
+    task = CodingTask(task_id="cleanup", title="Cleanup", prompt="Implement token cleanup.")
+    bundle = await run_policy(
+        task, client=_client_with_payload(producer_preflight_payload), output_base=tmp_path
+    )
+    meaningful = [step for step in steps if step.strip()]
+    assert bundle.artifact.plan[: len(meaningful)] == meaningful
+    assert all(step.strip() for step in bundle.artifact.plan)
+    assert bundle.output_dir is not None
+    assert (bundle.output_dir / "artifact.json").is_file()
