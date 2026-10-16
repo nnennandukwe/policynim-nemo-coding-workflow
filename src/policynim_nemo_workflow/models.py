@@ -76,6 +76,7 @@ class PolicyConstraints(StrictModel):
     """Compiled constraints that materially shape generation."""
 
     summary: str = Field(min_length=1)
+    plan_steps: list[str] = Field(default_factory=list)
     constraints: list[PolicyConstraint] = Field(default_factory=list)
     citations: list[PolicyCitation] = Field(default_factory=list)
     prompt_block: str = Field(min_length=1)

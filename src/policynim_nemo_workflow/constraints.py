@@ -27,7 +27,7 @@ def compile_policy_constraints(preflight_result: PolicyPreflightResult) -> Polic
         )
 
     constraints: list[PolicyConstraint] = []
-    for item in preflight_result.implementation_guidance:
+    for item in [*preflight_result.plan_steps, *preflight_result.implementation_guidance]:
         constraints.append(
             PolicyConstraint(
                 kind="must",
@@ -68,6 +68,7 @@ def compile_policy_constraints(preflight_result: PolicyPreflightResult) -> Polic
 
     return PolicyConstraints(
         summary=preflight_result.summary,
+        plan_steps=preflight_result.plan_steps,
         constraints=constraints,
         citations=preflight_result.citations,
         prompt_block="\n".join(lines),

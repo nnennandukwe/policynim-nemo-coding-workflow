@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 import pytest
 
@@ -67,7 +68,6 @@ async def test_policy_preflight_wraps_invalid_structured_content() -> None:
 def producer_preflight_payload() -> dict[str, object]:
     """Load JSON serialized by PolicyNIM PreflightResult at producer revision 10d4e86."""
     import json
-    from pathlib import Path
 
     path = Path(__file__).parent / "fixtures" / "policynim_preflight_generation.json"
     return json.loads(path.read_text(encoding="utf-8"))
@@ -125,3 +125,41 @@ async def test_policy_preflight_still_rejects_invalid_payloads(
             task="Implement refresh-token cleanup.", domain="security", top_k=3
         )
     assert error.value.__cause__ is not None
+
+
+def test_preflight_plan_steps_reach_compiled_constraints(
+    producer_preflight_payload: dict[str, object],
+) -> None:
+    """Producer-required plan steps stay visible in the generation constraints."""
+    from policynim_nemo_workflow.constraints import compile_policy_constraints
+    from policynim_nemo_workflow.models import PolicyPreflightResult
+
+    preflight = PolicyPreflightResult.model_validate(producer_preflight_payload)
+    constraints = compile_policy_constraints(preflight)
+    for step in preflight.plan_steps:
+        assert step in constraints.prompt_block
+        assert any(item.kind == "must" and item.text == step for item in constraints.constraints)
+
+
+@pytest.mark.asyncio
+async def test_preflight_plan_steps_survive_the_saved_workflow_artifact(
+    producer_preflight_payload: dict[str, object], tmp_path: Path
+) -> None:
+    """A real client-to-runner execution retains the producer's ordered required steps on disk."""
+    import json
+
+    from policynim_nemo_workflow.models import CodingTask, PolicyPreflightResult
+    from policynim_nemo_workflow.runner import run_policy
+
+    task = CodingTask(
+        task_id="token-cleanup", title="Token cleanup", prompt="Implement refresh-token cleanup."
+    )
+    preflight = PolicyPreflightResult.model_validate(producer_preflight_payload)
+    bundle = await run_policy(
+        task, client=_client_with_payload(producer_preflight_payload), output_base=tmp_path
+    )
+    assert bundle.artifact.plan[: len(preflight.plan_steps)] == preflight.plan_steps
+    assert bundle.artifact.citations == preflight.citations
+    assert bundle.output_dir is not None
+    saved = json.loads((bundle.output_dir / "artifact.json").read_text())
+    assert saved["plan"] == bundle.artifact.plan
