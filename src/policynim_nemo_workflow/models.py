@@ -74,11 +74,21 @@ class PolicyConstraint(StrictModel):
     citation_ids: list[str] = Field(default_factory=list)
 
 
+class PolicySourceReference(StrictModel):
+    """Unverified whole-source text paired with its returned owner and references."""
+
+    policy_id: str = Field(min_length=1)
+    title: str = Field(min_length=1)
+    body: str = Field(min_length=1)
+    citation_ids: list[str] = Field(min_length=1)
+
+
 class PolicyConstraints(StrictModel):
-    """Compiled constraints that materially shape generation."""
+    """Compiled constraints and separately retained unverified source references."""
 
     summary: str = Field(min_length=1)
     plan_steps: list[str] = Field(default_factory=list)
+    source_references: list[PolicySourceReference] = Field(default_factory=list)
     constraints: list[PolicyConstraint] = Field(default_factory=list)
     citations: list[PolicyCitation] = Field(default_factory=list)
     prompt_block: str = Field(min_length=1)
@@ -108,6 +118,7 @@ class CodingArtifact(StrictModel):
     generated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     plan: list[str] = Field(default_factory=list)
     unverified_plan_steps: list[str] = Field(default_factory=list)
+    source_references: list[PolicySourceReference] = Field(default_factory=list)
     files: list[GeneratedFile] = Field(default_factory=list)
     tests: list[GeneratedFile] = Field(default_factory=list)
     policy_trace: list[ToolCallRecord] = Field(default_factory=list)

@@ -53,6 +53,15 @@ def evaluate_artifact(artifact: CodingArtifact) -> EvaluationResult:
                 "by the fixed demo generator.",
             )
         )
+    if artifact.source_references:
+        checks.append(
+            EvaluationCheck(
+                name="source_applicability_review",
+                passed=False,
+                message="Whole policy quotations need applicability and condition review; "
+                "the fixed demo generator hasn't verified that review.",
+            )
+        )
     passed_count = sum(1 for check in checks if check.passed)
     return EvaluationResult(
         task_id=artifact.task_id,

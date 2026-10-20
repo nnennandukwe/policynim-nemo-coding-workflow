@@ -84,8 +84,17 @@ uv run pytest -q -m live
 ## Preflight Plans And Verification
 
 The MCP client accepts optional generation IDs and plan steps from PolicyNIM,
-including older responses without those fields. Required plan steps enter the
-compiled guidance and the saved artifact's plan. Blank entries are ignored.
+including older responses without those fields. Historical synthesized plan steps
+enter the compiled guidance and the saved artifact's plan. Blank entries are ignored.
+
+PolicyNIM's source-extractive response places whole policy quotations in the legacy
+`plan_steps` field. This client recognizes the fixed service summary/rationale
+contract and retains each quotation with its policy ID, title and citation IDs in
+`source_references`, including conditions,
+exceptions and examples. They enter a labeled reference prompt block, rather than
+`must` constraints or implementation plan steps. Malformed extractive envelopes
+stop generation. A marker identifies response meaning; it doesn't authenticate the
+server, verify source fidelity or establish applicability.
 
 The fixed demo generator can't establish that arbitrary requested steps are
 implemented in its code. It records them in `unverified_plan_steps`, and the
@@ -93,3 +102,8 @@ implemented in its code. It records them in `unverified_plan_steps`, and the
 A repeated template generation keeps that failed check; copying guidance into a
 plan doesn't verify implementation. The existing token-cleanup checks remain
 separate evidence with their original limited scope.
+
+When source references exist, the fixed generator records them in the artifact
+and the `source_applicability_review` check fails because it hasn't verified their
+applicability or conditions. Existing artifact files load with an empty reference
+list. See the [compatibility plan](docs/build-plans/source-reference-compatibility.md).
