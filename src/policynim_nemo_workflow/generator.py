@@ -60,6 +60,7 @@ def generate_policy_artifact(
         task_id=task.task_id,
         mode="policy",
         unverified_plan_steps=constraints.plan_steps,
+        source_references=constraints.source_references,
         plan=[
             *constraints.plan_steps,
             "Use the repository boundary to locate expired refresh-token records.",
