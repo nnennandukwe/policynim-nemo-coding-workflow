@@ -7,6 +7,7 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Protocol
 
 import httpx
+from mcp.types import TextContent
 from pydantic import ValidationError
 
 from policynim_nemo_workflow.models import PolicyPreflightResult
@@ -59,19 +60,24 @@ class HostedPolicyMcpClient:
             if domain is not None:
                 arguments["domain"] = domain
             result = await session.call_tool("policy_preflight", arguments)
-            payload = result.structuredContent
-            if not isinstance(payload, dict):
-                payload_type = type(payload).__name__
-                raise RuntimeError(
-                    "policy_preflight did not return structured content "
-                    f"(received {payload_type})."
-                )
-            try:
-                return PolicyPreflightResult.model_validate(payload)
-            except ValidationError as exc:
-                raise RuntimeError(
-                    "policy_preflight returned invalid structured content."
-                ) from exc
+        if result.isError:
+            details = "\n".join(
+                block.text for block in result.content if isinstance(block, TextContent)
+            )
+            if self._token:
+                details = details.replace(self._token, "<redacted>")
+            details = details[:2000].strip() or "The server returned no recovery details."
+            raise RuntimeError(f"PolicyNIM policy_preflight failed: {details}")
+        payload = result.structuredContent
+        if not isinstance(payload, dict):
+            payload_type = type(payload).__name__
+            raise RuntimeError(
+                f"policy_preflight did not return structured content (received {payload_type})."
+            )
+        try:
+            return PolicyPreflightResult.model_validate(payload)
+        except ValidationError as exc:
+            raise RuntimeError("policy_preflight returned invalid structured content.") from exc
 
     @asynccontextmanager
     async def _session(self) -> AsyncIterator[ClientSession]:
