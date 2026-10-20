@@ -4,15 +4,20 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
 
 import pytest
+from mcp.types import CallToolResult, TextContent
 
 from policynim_nemo_workflow.mcp_client import HostedPolicyMcpClient
 
 
 class FakeToolResult:
     def __init__(self, structured_content: object) -> None:
+        """Model successful results independently from the actual SDK error envelope."""
         self.structuredContent = structured_content
+        self.isError = False
 
 
 class FakeSession:
@@ -217,3 +222,56 @@ async def test_requested_plan_isnt_reported_as_verified_code(
         check["name"] == "required_plan_steps_verified" and not check["passed"]
         for check in evaluation["checks"]
     )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "message",
+    [
+        "quota_exceeded: Daily allowance reached. Retry after 2026-10-21T00:00:00Z.",
+        "admission_busy: Capacity is occupied. Retry in one second.",
+    ],
+)
+async def test_tool_error_preserves_recovery_before_success_validation(message: str) -> None:
+    """Actual SDK errors must retain the server's quota and retry instructions."""
+    client = HostedPolicyMcpClient.__new__(HostedPolicyMcpClient)
+    client._token = "private-token"
+    result = CallToolResult(
+        isError=True,
+        structuredContent={"task": "untrusted success-shaped data"},
+        content=[TextContent(type="text", text=message)],
+    )
+
+    @asynccontextmanager
+    async def error_session():
+        """Deliver the real SDK envelope through the public client operation."""
+        yield SimpleNamespace(call_tool=AsyncMock(return_value=result))
+
+    client._session = error_session
+    with pytest.raises(RuntimeError) as error:
+        await client.policy_preflight(task="Implement cleanup.", domain="security", top_k=3)
+    assert message in str(error.value)
+    assert "invalid structured content" not in str(error.value)
+
+
+@pytest.mark.asyncio
+async def test_tool_error_redacts_credentials_and_bounds_remote_text() -> None:
+    """Remote text can't expose the bearer credential or produce unbounded output."""
+    client = HostedPolicyMcpClient.__new__(HostedPolicyMcpClient)
+    client._token = "private-bearer-token"
+    result = CallToolResult(
+        isError=True,
+        content=[TextContent(type="text", text=client._token + " " + "x" * 10000)],
+    )
+
+    @asynccontextmanager
+    async def error_session():
+        """Keep transport behavior identical to the other error-envelope witnesses."""
+        yield SimpleNamespace(call_tool=AsyncMock(return_value=result))
+
+    client._session = error_session
+    with pytest.raises(RuntimeError) as error:
+        await client.policy_preflight(task="Implement cleanup.", domain=None, top_k=3)
+    assert client._token not in str(error.value)
+    assert "<redacted>" in str(error.value)
+    assert len(str(error.value)) < 2100
