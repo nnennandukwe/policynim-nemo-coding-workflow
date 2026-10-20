@@ -37,6 +37,7 @@ class PolicyCitation(StrictModel):
     section: str = Field(min_length=1)
     lines: str = Field(min_length=1)
     chunk_id: str = Field(min_length=1)
+    resource_uri: str | None = None
 
 
 class PolicyGuidance(StrictModel):
@@ -52,6 +53,7 @@ class PolicyPreflightResult(StrictModel):
     """Subset of PolicyNIM PreflightResult used by this demo."""
 
     generation_id: str | None = Field(default=None, pattern=r"^[0-9a-f]{64}$")
+    run_id: str | None = None
     task: str = Field(min_length=1)
     domain: str | None = None
     summary: str = Field(min_length=1)

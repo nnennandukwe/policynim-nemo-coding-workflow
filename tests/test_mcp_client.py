@@ -87,7 +87,7 @@ async def test_policy_preflight_accepts_generation_and_plan_steps(
     result = await client.policy_preflight(
         task="Implement refresh-token cleanup.", domain="security", top_k=3
     )
-    assert result.model_dump(mode="json") == producer_preflight_payload
+    assert result.model_dump(mode="json", exclude_unset=True) == producer_preflight_payload
 
 
 @pytest.mark.asyncio
@@ -281,3 +281,35 @@ async def test_tool_error_redacts_credentials_and_bounds_remote_text() -> None:
     assert client._token not in str(error.value)
     assert "<redacted>" in str(error.value)
     assert len(str(error.value)) < 2100
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("metadata", ["absent", "null", "populated"])
+async def test_grounded_producer_metadata_remains_backward_compatible(metadata: str) -> None:
+    """Actual producer serialization keeps optional run and citation addressing fields."""
+    import hashlib
+    import json
+
+    from policynim_nemo_workflow.constraints import compile_policy_constraints
+
+    fixture = Path(__file__).parent / "fixtures/policynim_preflight_grounded.json"
+    payload = json.loads(fixture.read_text(encoding="utf-8"))
+    if metadata == "absent":
+        payload.pop("run_id")
+        for citation in payload["citations"]:
+            citation.pop("resource_uri")
+    elif metadata == "populated":
+        payload["run_id"] = "a" * 32
+        for citation in payload["citations"]:
+            key = hashlib.sha256(citation["chunk_id"].encode()).hexdigest()
+            citation["resource_uri"] = (
+                f"policynim://generations/{payload['generation_id']}/chunks/{key}"
+            )
+    result = await _client_with_payload(payload).policy_preflight(
+        task=payload["task"], domain=payload["domain"], top_k=3
+    )
+    assert result.model_dump(mode="json", exclude_unset=True) == payload
+    constraints = compile_policy_constraints(result)
+    assert [item.resource_uri for item in constraints.citations] == [
+        item.resource_uri for item in result.citations
+    ]
