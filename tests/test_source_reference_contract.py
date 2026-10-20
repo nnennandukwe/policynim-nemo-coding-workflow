@@ -181,3 +181,33 @@ def test_extractive_response_retains_global_citation_without_claiming_an_owner()
     compiled = compile_policy_constraints(result)
     assert compiled.citations == result.citations
     assert compiled.source_references[0].citation_ids == ["SESSION-1:full"]
+
+
+def test_swapped_custom_producer_bodies_remain_unverified_nonconstraints() -> None:
+    """Reported positional labels don't become independent ownership or compliance proof."""
+    result = source_preflight()
+    other_body = "# Other policy\nA different complete body and its conditions."
+    result.applicable_policies.append(
+        result.applicable_policies[0].model_copy(
+            update={"policy_id": "OTHER", "title": "Other policy", "citation_ids": ["OTHER:full"]}
+        )
+    )
+    result.citations.append(
+        result.citations[0].model_copy(
+            update={"policy_id": "OTHER", "title": "Other policy", "chunk_id": "OTHER:full"}
+        )
+    )
+    result.plan_steps = [other_body, SOURCE_BODY]
+    compiled = compile_policy_constraints(result)
+    # This custom producer's reported order is retained as unverified input, not repaired.
+    assert compiled.source_references[0].policy_id == "SESSION-1"
+    assert compiled.source_references[0].body == other_body
+    assert compiled.constraints == [] and compiled.plan_steps == []
+    artifact = generate_policy_artifact(
+        CodingTask(task_id="cleanup", title="Cleanup", prompt="Review cleanup"), compiled
+    )
+    assert not any(body in artifact.plan for body in result.plan_steps)
+    evaluation = evaluate_artifact(artifact)
+    assert not evaluation.passed
+    check = next(c for c in evaluation.checks if c.name == "source_applicability_review")
+    assert not check.passed

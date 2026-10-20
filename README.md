@@ -94,7 +94,11 @@ contract and retains each quotation with its policy ID, title and citation IDs i
 exceptions and examples. They enter a labeled reference prompt block, rather than
 `must` constraints or implementation plan steps. Malformed extractive envelopes
 stop generation. A marker identifies response meaning; it doesn't authenticate the
-server, verify source fidelity or establish applicability.
+server, verify source fidelity or establish applicability. The configured producer
+owns its positional body/label association; a custom producer can report swapped
+bodies, which this consumer retains as unverified references. PolicyNIM's source
+service validates that association before returning its extractive response. This
+companion doesn't independently read canonical source resources.
 
 The fixed demo generator can't establish that arbitrary requested steps are
 implemented in its code. It records them in `unverified_plan_steps`, and the
