@@ -1,0 +1,42 @@
+{
+  "run_id": null,
+  "generation_id": "59550e393178ae023cbff580ebfbc3f63a56cc2b9913a01263da2e105f084def",
+  "task": "Implement refresh-token cleanup.",
+  "domain": "security",
+  "summary": "Review token cleanup before deployment.",
+  "applicable_policies": [
+    {
+      "policy_id": "TEST-001",
+      "title": "Token cleanup",
+      "rationale": "Expire revoked credentials.",
+      "citation_ids": [
+        "chunk-test-001"
+      ]
+    }
+  ],
+  "plan_steps": [
+    "Check token expiry.",
+    "Reject revoked credentials."
+  ],
+  "implementation_guidance": [
+    "Use a deterministic expiry check."
+  ],
+  "review_flags": [
+    "Check clock boundaries."
+  ],
+  "tests_required": [
+    "Reject an expired credential."
+  ],
+  "citations": [
+    {
+      "policy_id": "TEST-001",
+      "title": "Token cleanup",
+      "path": "security/token-cleanup.md",
+      "section": "Rules",
+      "lines": "8-12",
+      "chunk_id": "chunk-test-001",
+      "resource_uri": null
+    }
+  ],
+  "insufficient_context": false
+}
