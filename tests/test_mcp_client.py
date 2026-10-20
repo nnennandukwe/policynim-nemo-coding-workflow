@@ -245,7 +245,10 @@ async def test_tool_error_preserves_recovery_before_success_validation(message: 
     @asynccontextmanager
     async def error_session():
         """Deliver the real SDK envelope through the public client operation."""
-        yield SimpleNamespace(call_tool=AsyncMock(return_value=result))
+        try:
+            yield SimpleNamespace(call_tool=AsyncMock(return_value=result))
+        except RuntimeError as error:
+            raise ExceptionGroup("SDK task-group cleanup", [error]) from error
 
     client._session = error_session
     with pytest.raises(RuntimeError) as error:
@@ -267,7 +270,10 @@ async def test_tool_error_redacts_credentials_and_bounds_remote_text() -> None:
     @asynccontextmanager
     async def error_session():
         """Keep transport behavior identical to the other error-envelope witnesses."""
-        yield SimpleNamespace(call_tool=AsyncMock(return_value=result))
+        try:
+            yield SimpleNamespace(call_tool=AsyncMock(return_value=result))
+        except RuntimeError as error:
+            raise ExceptionGroup("SDK task-group cleanup", [error]) from error
 
     client._session = error_session
     with pytest.raises(RuntimeError) as error:
